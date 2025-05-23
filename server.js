@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -13,6 +14,10 @@ app.use('/output', express.static(path.join(__dirname, 'output')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const upload = multer();
+
+// Read font file and convert to base64 for embedding in SVG
+const fontPath = path.join(__dirname, 'fonts', 'NotoSansDevanagari-Regular.ttf');
+const fontData = fs.readFileSync(fontPath).toString('base64');
 
 function generateRandomAdhar() {
   return Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join('');
@@ -41,13 +46,19 @@ app.post('/generate', upload.none(), async (req, res) => {
       const adhar = generateRandomAdhar().replace(/(\d{4})(?=\d)/g, '$1 ');
 
       const svgText = `
-        <svg width="1015" height="640">
-          <style>
-            .hindi { font-family: 'Noto Sans Devanagari', sans-serif; font-size: 30px; fill: #404040; }
-            .english { font-family: Arial, sans-serif; font-size: 30px; fill: #404040; }
-            .dob { font-family: Arial, sans-serif; font-size: 26px; fill: #404040; }
-            .aadhaar { font-family: Arial, sans-serif; font-size: 50px; fill: #404040; }
-          </style>
+        <svg width="1015" height="640" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <style type="text/css">
+              @font-face {
+                font-family: 'NotoSansDevanagari';
+                src: url('data:font/truetype;charset=utf-8;base64,${fontData}') format('truetype');
+              }
+              .hindi { font-family: 'NotoSansDevanagari'; font-size: 30px; fill: #404040; }
+              .english { font-family: Arial, sans-serif; font-size: 30px; fill: #404040; }
+              .dob { font-family: Arial, sans-serif; font-size: 26px; fill: #404040; }
+              .aadhaar { font-family: Arial, sans-serif; font-size: 50px; fill: #404040; }
+            </style>
+          </defs>
           <text x="358" y="170" class="hindi">${hindiName}</text>
           <text x="358" y="215" class="english">${name}</text>
           <text x="531" y="260" class="dob">${formattedDob}</text>
@@ -60,7 +71,8 @@ app.post('/generate', upload.none(), async (req, res) => {
         .png()
         .toBuffer();
 
-      const filename = `card_${name.replace(/\s+/g, '_')}_${i + 1}.png`;
+      const safeName = name.replace(/\s+/g, '_').replace(/[^\w\-]/g, '');
+      const filename = `card_${safeName}_${i + 1}.png`;
       const filepath = path.join(__dirname, 'output', filename);
       fs.writeFileSync(filepath, cardBuffer);
       outputUrls.push(`/output/${filename}`);
