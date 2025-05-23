@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aadhaar Card Generator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Generate Aadhaar Cards</h2>
+    <form id="aadharForm">
+      <label for="name">Name (English):</label>
+      <input type="text" name="name" id="name" required />
+
+      <label for="hindiName">Name (Hindi):</label>
+      <input type="text" name="hindiName" id="hindiName" required />
+
+      <label for="baseDob">Base Date of Birth:</label>
+      <input type="date" name="baseDob" id="baseDob" required />
+
+      <label for="count">How many cards?</label>
+      <input type="number" name="count" id="count" value="10" min="1" required />
+
+      <button type="submit">Generate Cards</button>
+    </form>
+
+    <div id="toast" class="toast">Download started...</div>
+  </div>
+
+  <script>
+    document.getElementById('aadharForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+
+      const res = await fetch('/generate', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (data.success && Array.isArray(data.urls)) {
+        data.urls.forEach(url => {
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = url.split('/').pop();
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+      } else {
+        alert('Failed to generate Aadhaar cards.');
+      }
+    });
+  </script>
+</body>
+</html>
